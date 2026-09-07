@@ -1,13 +1,19 @@
 {
   "name": "aether",
-  "version": "0.1.0",
-  "description": "Portable, hardware-adaptive local AI gateway",
+  "version": "0.2.0",
+  "description": "Portable, hardware-adaptive local AI gateway with verified runtime discovery",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "check": "node --check src/server.js && node --check src/core/capabilities.js && node --check src/core/hardware.js && node --check src/core/providers.js && node --check src/adapters/llama-cpp.js"
   },
-  "keywords": ["aether", "local-ai", "llm", "gateway", "llama.cpp"],
+  "keywords": [
+    "aether",
+    "local-ai",
+    "llm",
+    "gateway",
+    "llama.cpp"
+  ],
   "author": "squ0sh",
   "license": "ISC",
   "type": "module"

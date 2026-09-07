@@ -13,41 +13,61 @@ function sendJson(res, statusCode, payload) {
 
 const server = http.createServer(async function (req, res) {
   try {
-    if (req.method === "GET" && req.url === "/api/status") {
+    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+
+    if (req.method === "GET" && url.pathname === "/api/status") {
       return sendJson(res, 200, {
         name: "Aether",
-        version: "0.1.0",
+        version: "0.2.0",
         status: "online",
         mode: "local",
         backend: null
       });
     }
 
-    if (req.method === "GET" && req.url === "/api/capabilities") {
+    if (req.method === "GET" && url.pathname === "/api/capabilities") {
       return sendJson(res, 200, {
         status: "ok",
         capabilities: getCapabilities()
       });
     }
 
-    if (req.method === "GET" && req.url === "/api/hardware") {
+    if (req.method === "GET" && url.pathname === "/api/hardware") {
       return sendJson(res, 200, {
         status: "ok",
         hardware: detectHardware()
       });
     }
 
-    if (req.method === "GET" && req.url === "/api/providers") {
+    if (req.method === "GET" && url.pathname === "/api/providers") {
       return sendJson(res, 200, {
         status: "ok",
         providers: providerManager.getProviders()
       });
     }
 
-    if (req.method === "GET" && req.url === "/api/providers/detect") {
+    if (req.method === "GET" && url.pathname === "/api/providers/detect") {
       return sendJson(res, 200, {
         status: "ok",
         providers: await providerManager.detectAll()
+      });
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/api/providers/") && url.pathname.endsWith("/status")) {
+      const parts = url.pathname.split("/").filter(Boolean);
+      const providerId = parts[2];
+      const provider = providerManager.getProvider(providerId);
+
+      if (!provider) {
+        return sendJson(res, 404, {
+          error: "Provider not found",
+          provider: providerId
+        });
+      }
+
+      return sendJson(res, 200, {
+        status: "ok",
+        provider: await provider.status()
       });
     }
 
@@ -67,7 +87,7 @@ server.listen(PORT, function () {
   console.log("================================");
   console.log("Status:  ONLINE");
   console.log("API:     http://localhost:" + PORT);
-  console.log("Backend: adapter discovery enabled");
+  console.log("Backend: runtime verification enabled");
   console.log("================================");
   console.log("");
 });

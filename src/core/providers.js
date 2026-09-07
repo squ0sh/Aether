@@ -13,26 +13,28 @@ class ProviderManager {
     }));
   }
 
+  getProvider(id) {
+    return this.providers.find((provider) => provider.id === id) || null;
+  }
+
   async detectAll() {
     const results = [];
 
     for (const provider of this.providers) {
       try {
-        const result = await provider.detect();
-        results.push({
-          id: provider.id,
-          name: provider.name,
-          type: provider.type,
-          ...result
-        });
+        results.push(await provider.status());
       } catch (error) {
         results.push({
           id: provider.id,
           name: provider.name,
           type: provider.type,
+          state: "error",
           detected: false,
+          executable: false,
           available: false,
+          verified: false,
           running: false,
+          healthy: false,
           error: error.message
         });
       }
