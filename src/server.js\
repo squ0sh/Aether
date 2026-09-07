@@ -1,0 +1,64 @@
+```js
+import http from "http";
+import { getCapabilities } from "./core/capabilities.js";
+
+const PORT = 8080;
+
+const server = http.createServer((req, res) => {
+  res.setHeader("Content-Type", "application/json");
+
+  if (req.method === "GET" && req.url === "/api/status") {
+    res.writeHead(200);
+
+    res.end(
+      JSON.stringify({
+        name: "Aether",
+        version: "0.1.0",
+        status: "online",
+        mode: "local",
+        backend: null
+      })
+    );
+
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/hardware") {
+    res.writeHead(200);
+
+    res.end(
+      JSON.stringify(
+        {
+          status: "ok",
+          capabilities: getCapabilities()
+        },
+        null,
+        2
+      )
+    );
+
+    return;
+  }
+
+  res.writeHead(404);
+
+  res.end(
+    JSON.stringify({
+      error: "Not found"
+    })
+  );
+});
+
+server.listen(PORT, function () {
+  console.log("");
+  console.log("================================");
+  console.log("          AETHER ZERO");
+  console.log("================================");
+  console.log("Status:  ONLINE");
+  console.log("API:     http://localhost:" + PORT);
+  console.log("Backend: none");
+  console.log("================================");
+  console.log("");
+});
+```
+
