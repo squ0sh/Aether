@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#090b10">
+  <title>Aether</title>
+  <link rel="stylesheet" href="/styles.css?v=0.13.0">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-row">
+        <div class="brand-mark" aria-hidden="true">✦</div>
+        <div><strong>Aether</strong><span>Local workspace</span></div>
+        <button class="icon-button mobile-only" id="close-sidebar" aria-label="Close conversations">×</button>
+      </div>
+
+      <button class="new-chat" id="new-chat"><span>＋</span> New conversation <kbd>Ctrl K</kbd></button>
+
+      <label class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="conversation-search" type="search" placeholder="Search conversations" autocomplete="off">
+      </label>
+
+      <div class="conversation-section">
+        <div class="section-label">CONVERSATIONS</div>
+        <div class="conversation-list" id="conversation-list"></div>
+        <div class="empty-list" id="empty-list">Your conversations will appear here.</div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="runtime-card" id="open-setup">
+          <span class="status-dot" id="status-dot"></span>
+          <span><strong id="runtime-title">Checking Aether…</strong><small id="runtime-detail">Local and private</small></span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="sidebar-scrim" id="sidebar-scrim"></div>
+
+    <section class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-only" id="open-sidebar" aria-label="Open conversations">☰</button>
+        <div class="conversation-heading">
+          <strong id="conversation-title">New conversation</strong>
+          <span id="privacy-label">Private on this device</span>
+        </div>
+        <label class="model-picker">
+          <span>Model</span>
+          <select id="model-select" aria-label="Choose model"></select>
+        </label>
+        <label class="priority-picker">
+          <span>Priority</span>
+          <select id="priority-select" aria-label="Choose response priority">
+            <option value="balanced">Balanced</option>
+            <option value="speed">Speed</option>
+            <option value="quality">Quality</option>
+          </select>
+        </label>
+        <button class="decision-button" id="decision-button" type="button">Why this model?</button>
+        <button class="icon-button" id="refresh" aria-label="Refresh Aether status">↻</button>
+      </header>
+
+      <main class="chat-scroll" id="chat-scroll">
+        <div class="welcome" id="welcome">
+          <div class="welcome-mark">✦</div>
+          <p class="eyebrow">AETHER · LOCAL AI</p>
+          <h1>What are we working on?</h1>
+          <p class="welcome-copy">Your conversations and model stay on this machine.</p>
+          <div class="suggestion-grid">
+            <button class="suggestion">Help me think through an idea<span>Explore a problem together</span></button>
+            <button class="suggestion">Explain something complicated simply<span>Learn without the jargon</span></button>
+            <button class="suggestion">Draft a thoughtful message<span>Find the right words</span></button>
+            <button class="suggestion">Make a practical plan<span>Turn a goal into next steps</span></button>
+          </div>
+        </div>
+        <div class="messages" id="messages" aria-live="polite"></div>
+      </main>
+
+      <footer class="composer-wrap">
+        <form class="composer" id="composer">
+          <textarea id="message-input" rows="1" placeholder="Message Aether" aria-label="Message Aether"></textarea>
+          <div class="composer-actions">
+            <span class="composer-hint">Enter to send · Shift Enter for a new line</span>
+            <button class="send-button" id="send-button" type="submit" aria-label="Send message">↑</button>
+            <button class="stop-button" id="stop-button" type="button" hidden>Stop</button>
+          </div>
+        </form>
+        <p class="local-note">Aether can make mistakes. Important details deserve a second look.</p>
+      </footer>
+    </section>
+  </div>
+
+  <dialog id="setup-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">LOCAL ENGINE</p><h2>Aether setup</h2></div>
+      <button class="icon-button" id="close-setup" aria-label="Close setup">×</button>
+    </div>
+    <p class="dialog-copy">Aether runs entirely on this computer. We’ll keep the engine and model ready for private conversations.</p>
+    <div class="setup-steps">
+      <div class="setup-row"><span class="step-icon" id="engine-icon">1</span><div><strong>Local engine</strong><small id="engine-status">Checking llama.cpp…</small></div><button id="engine-action">Set up</button></div>
+      <div class="setup-row"><span class="step-icon" id="model-icon">2</span><div><strong>AI model</strong><small id="model-status">Checking installed models…</small></div><button id="model-action">Set up</button></div>
+    </div>
+    <div class="setup-message" id="setup-message">Everything happens locally unless you approve a required download.</div>
+    <div class="performance-panel">
+      <div><strong>Measured performance</strong><small id="benchmark-summary">No local benchmark results yet.</small></div>
+      <button id="benchmark-action" type="button">Run benchmark</button>
+    </div>
+    <div class="acceleration-panel">
+      <div><strong>Hardware acceleration</strong><small id="acceleration-summary">Checking which compute path is actually available…</small></div>
+      <span id="acceleration-status">Checking</span>
+    </div>
+    <div class="benchmark-results" id="benchmark-results"></div>
+    <button class="setup-why" id="setup-decision" type="button">See why Aether chose this model</button>
+  </dialog>
+
+  <dialog id="decision-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">CAPABILITY CORE</p><h2>Why Aether chose this</h2></div>
+      <button class="icon-button" id="close-decision" aria-label="Close decision details">×</button>
+    </div>
+    <p class="dialog-copy">Aether makes this choice from verified local facts and measured results—not from a model guessing about the machine.</p>
+    <div class="decision-route" id="decision-route"></div>
+    <div class="decision-section"><strong>Decision factors</strong><ul id="decision-reasons"></ul></div>
+    <div class="decision-metrics" id="decision-metrics"></div>
+    <p class="decision-id" id="decision-id"></p>
+  </dialog>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/app.js?v=0.13.0"></script>
+</body>
+</html>

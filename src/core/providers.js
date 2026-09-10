@@ -1,8 +1,9 @@
 import { LlamaCppAdapter } from "../adapters/llama-cpp.js";
+import { OllamaAdapter } from "../adapters/ollama.js";
 
 class ProviderManager {
-  constructor() {
-    this.providers = [new LlamaCppAdapter()];
+  constructor(options = {}) {
+    this.providers = options.providers || [new LlamaCppAdapter(), new OllamaAdapter()];
   }
 
   getProviders() {
@@ -41,6 +42,12 @@ class ProviderManager {
     }
 
     return results;
+  }
+
+  async stopAll() {
+    await Promise.all(this.providers.map(async (provider) => {
+      try { await provider.stop(); } catch { /* Best-effort shutdown. */ }
+    }));
   }
 }
 

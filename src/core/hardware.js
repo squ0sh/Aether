@@ -1,4 +1,10 @@
 import os from "os";
+import { existsSync, readdirSync } from "fs";
+
+function directoryHas(path, predicate) {
+  try { return existsSync(path) && readdirSync(path).some(predicate); }
+  catch { return false; }
+}
 
 function detectHardware() {
   const platform = process.platform;
@@ -22,7 +28,12 @@ function detectHardware() {
   // Potential acceleration paths. These are not yet verified runtime checks.
   if (platform === "darwin") hardware.acceleration.push("metal");
   if (platform === "win32") hardware.acceleration.push("directml", "vulkan");
-  if (platform === "linux") hardware.acceleration.push("vulkan");
+  if (platform === "linux") {
+    const renderNode = directoryHas("/dev/dri", (name) => name.startsWith("renderD"));
+    const vulkanDriver = directoryHas("/usr/share/vulkan/icd.d", (name) => name.endsWith(".json"));
+    if (renderNode && vulkanDriver) hardware.acceleration.push("vulkan");
+    hardware.graphicsDeviceAccess = { renderNode, vulkanDriver };
+  }
   hardware.acceleration.push("cpu");
 
   return hardware;

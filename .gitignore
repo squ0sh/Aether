@@ -141,3 +141,15 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Aether local models, runtime binaries, and private application state
+/models/*
+!/models/.gitkeep
+/runtimes/*
+!/runtimes/.gitkeep
+/data/*
+!/data/.gitkeep
+
+# Downloaded model weights and packaged releases
+*.gguf
+/Aether-v*.zip
