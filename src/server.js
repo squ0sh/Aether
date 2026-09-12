@@ -1,10 +1,13 @@
 import { createAetherApp } from "./app.js";
 
 const PORT = Number(process.env.AETHER_PORT || 8080);
+const HOST = process.env.AETHER_HOST || "127.0.0.1";
 const { server, restoreSelection, operations, providerManager } = createAetherApp();
 
-server.listen(PORT, async function () {
-  console.log("Aether online: http://localhost:" + PORT);
+server.listen(PORT, HOST, async function () {
+  const address = server.address();
+  console.log(`Aether online: http://${address.address.includes(":") ? `[${address.address}]` : address.address}:${address.port}`);
+  if (!["127.0.0.1", "::1", "localhost"].includes(HOST)) console.warn("Warning: remote binding is enabled without authentication. Use only behind trusted access controls.");
   try {
     const model = await restoreSelection();
     if (model) console.log("Restored model: " + model.name);

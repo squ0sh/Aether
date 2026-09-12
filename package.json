@@ -1,9 +1,11 @@
 {
   "name": "aether",
-  "version": "0.13.1",
+  "version": "0.14.0",
   "description": "Adaptive local AI workspace with measured routing and exclusive runtime operation protection",
   "main": "src/server.js",
   "scripts": {
+    "precheck": "node --check src/core/field.js && node --check src/core/field-store.js && node --check src/core/field-operations.js && node --check public/chat-stream.js",
+    "test:field": "node --test test/field.test.js test/field-store.test.js test/field-operations.test.js",
     "start": "node src/server.js",
     "check": "node --check src/server.js && node --check src/app.js && node --check src/core/operations.js && node --check src/core/acceleration.js && node --check src/core/benchmarks.js && node --check src/core/capabilities.js && node --check src/core/capability-core.js && node --check src/core/config.js && node --check src/core/conversations.js && node --check src/core/executions.js && node --check src/core/failover.js && node --check src/core/hardware.js && node --check src/core/model-selector.js && node --check src/core/providers.js && node --check src/core/static.js && node --check src/adapters/llama-cpp.js && node --check src/adapters/ollama.js && node --check public/app.js",
     "test": "node --test"

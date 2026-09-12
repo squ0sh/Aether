@@ -1,19 +1,54 @@
 # Aether: foundation before expansion
 
-Updated 2026-09-10, after reviewing the build history and “Explain Aether Differences.”
+Realigned 2026-09-11 after “Define Aether Sovereignty” and the owner's clarification
+that existing work should be retained unless deliberately changed or incompatible
+with the goals. This document describes direction, not additional shipped features.
+
+Planning reference: [conversation with Cal](https://chatgpt.com/share/6aa388b1-5b60-83e9-90ca-638d4130a56d).
 
 ## The direction
 
-Aether should answer: “What can this system safely do for this task, under the
-user's constraints?” Its center should be deterministic coordination: structured
-state, policy, resource admission, execution, and observations. Models are
-replaceable capabilities, not the authority that defines permissions.
+Aether is intended to be a persistent, adaptable space in which intelligence can
+work. Models supply cognitive effort; the Field preserves the evolving questions,
+observations, interpretations, relationships, and history across those efforts.
+Switching a model must not mean starting that inquiry over.
 
-The most useful interpretation of recursive expansion is reusable composition:
-verified capabilities can form a tested workflow, and a verified workflow can
-later be used as a capability. This does not require self-modifying code, endless
-exploration, or training a new model. A goal, a budget, and a success check must
-bound each attempt. Larger ideas remain design directions, not shipped features.
+Recursive expansion includes branching interpretations, questioning assumptions,
+bringing in evidence, and integrating or retaining divergent states. A new state
+can become the starting point for further inquiry. Reusable workflows remain a
+useful application of this idea, but are not its entire meaning. This external,
+model-independent representation is not itself a neural network's latent space.
+
+The existing runtime, provider, hardware, routing, benchmark, conversation, and
+interface work stays useful. Extend it rather than replacing it for philosophical
+neatness. Revisit an implementation when there is a demonstrated conflict, an
+agreed improvement, or a portability need—not simply because the vision grew.
+
+Portability and adaptability remain central: avoid tying the Field to one model,
+provider, operating system, database, interface, or hardware class. A small first
+implementation is a starting point, not a ceiling on what Aether may represent
+or eventually do. Explicit versioned interfaces should allow new capabilities
+without weakening data integrity, user permissions, or privacy.
+
+## Design commitments
+
+- The Field holds persistent state; no model owns the truth within it.
+- Questions are first-class records, including questions that remain unresolved.
+- Observation, inference, assumption, analogy, and evidence remain distinguishable.
+- Sources and relationships can be challenged, including human and resident claims.
+- Disagreement may persist; integration does not require selecting one winner.
+- Ordinary revisions preserve ancestry rather than silently replacing history.
+- Human intent sets goals and permissions, not which factual conclusion must win.
+  Aether must also leave the human free to reject its conclusions.
+- The intended enduring resident supports curiosity and continuity, not authority.
+  Its training is later work; the Field must remain readable if it is unavailable.
+- Structural primitives are provisional and reducible. Derived patterns and
+  operations are separate. Polarity/reference/integration is a lens to examine,
+  not a universal law or mandatory three-way classification.
+- Similar structure does not establish identical mechanisms. Unknown confidence
+  remains unknown, and a model's confidence is not calibrated evidence.
+- Privacy-aware deletion is an explicit exception to ordinary history retention.
+  Preserving ancestry must not make private content impossible to remove.
 
 ## What the current code demonstrates
 
@@ -31,8 +66,53 @@ or inference call does not prove that the answer is correct. Historical benchmar
 results are observations, not a guarantee about the current runtime or workload.
 The graph describes one host; there is no Tendril protocol, general tool runner,
 cognitive interpreter, capability composer, or cross-machine scheduler yet.
+The development tree now provides immutable JSON records and full-history
+validation in `field.js`, plus local snapshot persistence in `field-store.js`.
+Restart, retries, writer exclusion, and publication failures are covered by
+isolated tests. These modules do not yet integrate live conversations.
+The capability graph describes
+execution resources; it is not yet a graph of questions and competing claims.
 
-## Small checkpoints, in order
+## Next development track: the minimal Field
+
+The first contract is in [FIELD-CONTRACT.md](FIELD-CONTRACT.md). Its status is a
+contract with record validation, local snapshot persistence, editing operations,
+and explicit multi-parent integration implemented. There are no
+new HTTP APIs. The current project remains the
+implementation source of truth.
+
+1. Implemented as the first development increment: define and validate small
+   node, edge, provenance, and state records. Prove
+   unknown confidence, distinct claim types, and immutable revision semantics.
+2. Implemented as the second development increment: local persistence behind a
+   replaceable storage boundary, with restart, atomic publication, private local
+   files, retry receipts, and explicit snapshot export/import. See
+   [storage behavior and recovery limits](FIELD-STORAGE.md).
+3. Implemented as the third development increment: add attributed questions,
+   relationships, and revisions through [editing operations](FIELD-OPERATIONS.md).
+   A relationship is a sourced claim, not an automatic truth determination.
+4. Implemented as the fourth development increment: explicit branch integration
+   unions selected memberships with intact ancestry and disagreement, without
+   choosing a winner or changing unselected branches.
+5. Lightly connect existing execution/conversation flows. Retain model output as
+   attributed output, not verified truth; avoid re-running inference on save errors.
+6. Demonstrate continuity across restart and model changes, inspect results with
+   the owner and Cal, and revise before resident training or broader automation.
+
+Each increment includes tests; the sixth is an end-to-end review, not the first
+testing stage. These are reviewable slices, not a promise to ship exactly six
+versions. No custom resident training, large vector service, peer network, or
+autonomous swarm is required to prove the first Field.
+
+The acceptance scenario: retain a question and two competing interpretations;
+attach evidence to one; create a new state without erasing the other; restart and
+switch providers; recover the same inquiry and the origins of every contribution.
+
+## Supporting engineering work retained from the earlier roadmap
+
+These remain valid improvements. Sequence them when they support the Field or
+address an actual correctness/resource problem, rather than making every item a
+prerequisite for the first Field prototype.
 
 ### 1. Reliable local admission — started in v0.13.1
 

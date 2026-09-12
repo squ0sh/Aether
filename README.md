@@ -1,8 +1,23 @@
 # Aether
 
-Aether is a portable, hardware-adaptive local AI gateway. Its goal is to expose one stable local API while adapters handle the differences between local inference runtimes such as llama.cpp, Ollama, vLLM, MLX, WebLLM, and others.
+Aether is building toward a portable, adaptive space for ongoing inquiry: models
+provide cognitive effort while Aether preserves continuity across them. Today it
+provides a working local AI gateway and chat workspace with llama.cpp and Ollama
+adapters. Other runtimes and capabilities can be added without making one model,
+operating system, or interface the identity of Aether.
 
-## Current checkpoint: v0.13.1
+The next architectural layer is the **Aether Field**: persistent questions,
+observations, competing interpretations, and their sources and history. This is
+under incremental development: records, validation, editing operations, and local snapshot persistence
+are implemented, but there is no chat integration yet. Existing functionality
+is retained. See [the direction and roadmap](docs/FOUNDATION.md) and
+[the initial Field contract](docs/FIELD-CONTRACT.md).
+
+## Current release: v0.14.0
+
+See [v0.14.0 release notes](docs/RELEASE-v0.14.0.md) for the Field foundation,
+privacy safeguards, and chat reliability fixes. Field functionality remains a
+library layer; live chat is not yet connected to it.
 
 Aether currently includes:
 
@@ -298,11 +313,19 @@ A runtime is only marked `available: true` after its executable successfully pas
 npm start
 ```
 
-By default Aether listens on port `8080`. You can override it:
+By default Aether listens only on `127.0.0.1`, port `8080`. You can override the port:
 
 ```bash
 AETHER_PORT=9000 npm start
 ```
+
+`AETHER_HOST` allows an explicit alternate bind address. Remote binding is still
+unauthenticated: use it only behind trusted access controls, never directly exposed
+to an untrusted network. The default loopback bind does not authenticate local users.
+
+The browser preserves received answer text with a warning on save failures,
+interruption, or cancellation. A stream is only confirmed complete after the
+server's `done` event; a closed connection alone is not success.
 
 Then open `http://localhost:8080` in a browser. If Aether needs a runtime or model,
 the setup panel will guide you and ask before downloading anything.
@@ -449,8 +472,33 @@ calling the load endpoint again.
 
 ## Next checkpoint
 
-Next is memory-aware admission: distinguish available memory from simply free
-memory, estimate runtime and context overhead, and check again before loading.
-Follow that with cancellation and trustworthy, configuration-specific measurement
-history. See [the staged foundation roadmap](docs/FOUNDATION.md) for the larger
-direction, acceptance tests, and explicit limits of the current implementation.
+The first Field representation is implemented in `src/core/field.js`: immutable
+nodes, attributed relationships, questions, uncertainty, and validated state
+ancestry. `npm run test:field` exercises this independently of model runtimes.
+Local persistence now saves complete histories with atomic publication, exclusive
+writer protection, and idempotent save retries. See [Field storage](docs/FIELD-STORAGE.md).
+A small [Field editing layer](docs/FIELD-OPERATIONS.md) now adds questions,
+relationships, and attributed revisions without manually assembling snapshots.
+Explicit branch integration now combines selected states while preserving older
+records, competing revisions, and ancestry. Durable incremental commits and chat
+integration are not yet implemented. Explicit whole-Field deletion now requires
+permission and a reviewed storage revision, removes local content, and blocks old
+save retries from restoring it. See [deletion scope and limits](docs/FIELD-STORAGE.md#explicit-deletion).
+Linked conversation deletion remains a prerequisite for opt-in chat integration.
+
+Chat now distinguishes completed inference from subsequent save failures. If an
+assistant-message or execution-record save cannot be confirmed, JSON chat returns
+HTTP 500 with `code: AETHER_PERSISTENCE_UNCERTAIN`, `inferenceCompleted: true`,
+`retrySafe: false`, `phase`, `conversationId`, and the completed `response`.
+Streaming emits an error event with the same diagnostic fields after its deltas,
+not a successful `done` event. Neither path retries inference through another model
+or records the save failure as a model failure. This does not provide automatic
+save recovery: check the conversation before resubmitting, since a new chat
+request runs inference again. A failed acknowledgement may follow a successful save.
+
+Memory-aware admission, cancellation, and trustworthy measurements remain on the
+supporting roadmap. See [the staged foundation roadmap](docs/FOUNDATION.md) for
+acceptance criteria and [the Field contract](docs/FIELD-CONTRACT.md) for the proposed
+data boundaries. These development increments are now released as v0.14.0.
+The existing working directory may still be named `Aether-v0.13.1`; the package
+version identifies the release.

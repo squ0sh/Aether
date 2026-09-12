@@ -11,6 +11,8 @@ const previousDataDir = process.env.AETHER_DATA_DIR;
 process.env.AETHER_DATA_DIR = root;
 const { createAetherApp } = await import("../src/app.js");
 const { saveConfig } = await import("../src/core/config.js");
+const { appendMessage: realAppendMessage } = await import("../src/core/conversations.js");
+const { recordExecution: realRecordExecution } = await import("../src/core/executions.js");
 after(async () => {
   if (previousDataDir === undefined) delete process.env.AETHER_DATA_DIR;
   else process.env.AETHER_DATA_DIR = previousDataDir;
@@ -23,7 +25,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function fixture(context) {
+async function fixture(context, persistence = {}) {
   const started = deferred();
   const finish = deferred();
   const calls = [];
@@ -67,7 +69,7 @@ async function fixture(context) {
     detectAll: async () => [await provider.status()],
     stopAll: async () => provider.stop()
   };
-  const app = createAetherApp({ providerManager });
+  const app = createAetherApp({ providerManager, persistence });
   app.server.listen(0, "127.0.0.1");
   await once(app.server, "listening");
   context.after(async () => {
@@ -86,6 +88,51 @@ async function fixture(context) {
 }
 
 const chatInput = { message: "hello", providerId: "llama-cpp", modelId: "small" };
+
+for (const streaming of [false, true]) {
+  for (const failure of ["assistant-message", "execution-record", "lost-acknowledgement"]) {
+    test(`${streaming ? "stream" : "JSON"} completed inference never fails over after ${failure}`, { timeout: 10000 }, async (context) => {
+      const measurements = [];
+      const f = await fixture(context, {
+        async appendMessage(...args) {
+          if (args[1] === "assistant") {
+            if (failure === "lost-acknowledgement") await realAppendMessage(...args);
+            if (failure !== "execution-record") throw new Error("simulated private storage failure");
+          }
+          return realAppendMessage(...args);
+        },
+        async recordExecution(record) {
+          measurements.push(record);
+          if (failure === "execution-record") throw new Error("simulated measurement failure");
+          return realRecordExecution(record);
+        }
+      });
+      f.finish.resolve();
+      const response = await f.request(streaming ? "/api/chat/stream" : "/api/chat", { message: "preserve my answer" });
+      let result;
+      if (streaming) {
+        const events = (await response.text()).split("\n").filter((line) => line.startsWith("data: ")).map((line) => JSON.parse(line.slice(6)));
+        result = events.at(-1);
+        assert.equal(result.type, "error");
+        assert.equal(events.some((item) => ["done", "fallback"].includes(item.type)), false);
+        assert.equal(events.filter((item) => item.type === "delta").map((item) => item.delta).join(""), "first last");
+      } else {
+        assert.equal(response.status, 500);
+        result = await response.json();
+        assert.equal(result.response.message, "complete answer");
+      }
+      assert.equal(result.code, "AETHER_PERSISTENCE_UNCERTAIN");
+      assert.equal(result.inferenceCompleted, true);
+      assert.equal(result.retrySafe, false);
+      assert.equal(result.phase, failure === "execution-record" ? failure : "assistant-message");
+      assert.equal(f.calls.filter((call) => /^(chat|stream):/.test(call)).length, 1);
+      assert.equal(measurements.some((record) => record.outcome === "error"), false);
+      const saved = await (await f.request(`/api/conversations/${result.conversationId}`)).json();
+      assert.equal(saved.conversation.messages.length, failure === "assistant-message" ? 1 : 2);
+      assert.equal(f.operations.status().state, "idle");
+    });
+  }
+}
 
 async function assertBusy(response, kind) {
   assert.equal(response.status, 409);

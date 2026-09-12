@@ -1,3 +1,5 @@
+import { consumeChatStream, interruptedAnswer } from "./chat-stream.js";
+
 const $ = (selector) => document.querySelector(selector);
 
 const elements = {
@@ -303,18 +305,7 @@ async function sendMessage(message) {
       throw new Error(result.message || result.error || `Request failed (${response.status})`);
     }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-      const events = buffer.split("\n\n");
-      buffer = events.pop() || "";
-      for (const event of events) {
-        const data = event.split("\n").find((line) => line.startsWith("data:"));
-        if (!data) continue;
-        const payload = JSON.parse(data.slice(5).trim());
+    await consumeChatStream(response.body, (payload) => {
         if (payload.type === "conversation") state.currentId = payload.conversationId;
         if (payload.type === "decision") state.decision = payload.decision;
         if (payload.type === "fallback") {
@@ -327,20 +318,13 @@ async function sendMessage(message) {
           output.innerHTML = renderText(complete);
           scrollToBottom(false);
         }
-        if (payload.type === "error") throw new Error(payload.error || "The local model stopped unexpectedly");
-      }
-      if (done) break;
-    }
+    });
     output.classList.remove("thinking");
     if (!complete) output.innerHTML = renderText("The model finished without returning text.");
   } catch (error) {
     output.classList.remove("thinking");
-    if (error.name === "AbortError") {
-      output.innerHTML = renderText(complete || "Response stopped.");
-    } else {
-      output.innerHTML = renderText(`I couldn't complete that response. ${error.message}`);
-      notify(error.message, true);
-    }
+    output.innerHTML = renderText(interruptedAnswer(complete, error));
+    if (error.name !== "AbortError") notify(error.message, true);
   } finally {
     state.controller = null;
     setBusy(false);

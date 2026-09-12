@@ -4,19 +4,28 @@ import { getCapabilities } from "./core/capabilities.js";
 import { detectHardware } from "./core/hardware.js";
 import { ProviderManager } from "./core/providers.js";
 import { loadConfig, saveConfig } from "./core/config.js";
-import { appendMessage, createConversation, deleteConversation, getConversation, listConversations } from "./core/conversations.js";
+import { appendMessage as defaultAppendMessage, createConversation, deleteConversation, getConversation, listConversations } from "./core/conversations.js";
 import { selectModel } from "./core/model-selector.js";
 import { servePublicAsset } from "./core/static.js";
 import { buildCapabilityProfile, planExecution } from "./core/capability-core.js";
-import { listExecutions, recordExecution, summarizeExecutions } from "./core/executions.js";
+import { listExecutions, recordExecution as defaultRecordExecution, summarizeExecutions } from "./core/executions.js";
 import { listBenchmarks, recordBenchmark, summarizeBenchmarks } from "./core/benchmarks.js";
 import { activateFailover, failoverRoutes, mayFailOver } from "./core/failover.js";
 import { buildAccelerationProfile } from "./core/acceleration.js";
 import { OperationGate, operationForRequest } from "./core/operations.js";
 
 // Construct without listening, allowing isolated HTTP tests with fake providers.
-export function createAetherApp({ providerManager = new ProviderManager(), publicRoot = join(process.cwd(), "public") } = {}) {
+export function createAetherApp({ providerManager = new ProviderManager(), publicRoot = join(process.cwd(), "public"), persistence = {} } = {}) {
+  const { appendMessage = defaultAppendMessage, recordExecution = defaultRecordExecution } = persistence;
   const operations = new OperationGate();
+
+  function persistenceFailure(conversationId, phase) {
+    return {
+      code: "AETHER_PERSISTENCE_UNCERTAIN", conversationId, phase,
+      inferenceCompleted: true, retrySafe: false,
+      message: "The model completed its answer, but saving could not be confirmed. Check the conversation before retrying; resubmitting chat runs inference again."
+    };
+  }
 
   async function capabilitySnapshot() {
     const providers = providerManager.getProviders().map(({ id }) => providerManager.getProvider(id));
@@ -328,14 +337,24 @@ export function createAetherApp({ providerManager = new ProviderManager(), publi
           if (index > 0) activateFailover(decision, routes[index], previousError);
           const startedAt = new Date().toISOString();
           const started = Date.now();
+          let completedResponse = null;
+          let phase = "assistant-message";
           try {
             const provider = await prepareExecutionPath(decision);
             const response = await provider.chat(message, history, { modelId: decision.selected.modelId });
+            completedResponse = response;
             await appendMessage(conversation.id, "assistant", response.message);
+            phase = "execution-record";
             const execution = await recordExecution({ decisionId: decision.id, conversationId: conversation.id, providerId: response.provider, modelId: response.model, task: "chat", outcome: "success", startedAt, durationMs: Date.now() - started, inputCharacters: message.length, outputCharacters: response.message.length });
             attempts.push(execution);
             return sendJson(res, 200, { status: "ok", conversationId: conversation.id, decision, execution, attempts, response });
           } catch (error) {
+            // Storage failure is not evidence that this model failed inference.
+            // Never invoke an alternate or write a misleading error measurement.
+            if (completedResponse) return sendJson(res, 500, {
+              error: "Aether persistence error", ...persistenceFailure(conversation.id, phase),
+              response: completedResponse, decision, attempts
+            });
             previousError = error;
             attempts.push(await recordExecution({ decisionId: decision.id, conversationId: conversation.id, providerId: decision.selected.providerId, modelId: decision.selected.modelId, task: "chat", outcome: "error", startedAt, durationMs: Date.now() - started, inputCharacters: message.length, errorCategory: errorCategory(error) }));
             if (!mayFailOver({ remainingRoutes: routes.length - index - 1 })) throw error;
@@ -371,18 +390,27 @@ export function createAetherApp({ providerManager = new ProviderManager(), publi
           }
           const startedAt = new Date().toISOString();
           const started = Date.now();
+          let inferenceCompleted = false;
+          let phase = "assistant-message";
           try {
             const provider = await prepareExecutionPath(decision);
             for await (const delta of provider.chatStream(message, history, { modelId: decision.selected.modelId })) {
               complete += delta;
               res.write(`data: ${JSON.stringify({ type: "delta", delta })}\n\n`);
             }
+            inferenceCompleted = true;
             if (complete) await appendMessage(conversation.id, "assistant", complete);
+            phase = "execution-record";
             const execution = await recordExecution({ decisionId: decision.id, conversationId: conversation.id, providerId: decision.selected.providerId, modelId: decision.selected.modelId, task: "chat", outcome: "success", startedAt, durationMs: Date.now() - started, inputCharacters: message.length, outputCharacters: complete.length });
             attempts.push(execution);
             res.write(`data: ${JSON.stringify({ type: "done", execution, attempts, decision })}\n\n`);
             return res.end();
           } catch (error) {
+            if (inferenceCompleted) {
+              const failure = persistenceFailure(conversation.id, phase);
+              res.write(`data: ${JSON.stringify({ type: "error", error: failure.message, ...failure })}\n\n`);
+              return res.end();
+            }
             previousError = error;
             attempts.push(await recordExecution({ decisionId: decision.id, conversationId: conversation.id, providerId: decision.selected.providerId, modelId: decision.selected.modelId, task: "chat", outcome: "error", startedAt, durationMs: Date.now() - started, inputCharacters: message.length, outputCharacters: complete.length, errorCategory: errorCategory(error) }));
             if (!mayFailOver({ outputStarted: complete.length > 0, remainingRoutes: routes.length - index - 1 })) {

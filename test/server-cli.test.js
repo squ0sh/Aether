@@ -14,7 +14,7 @@ test("CLI starts and shuts down cleanly without an installed runtime", { timeout
     cwd: root,
     // Use an empty working directory and search path: do not discover or start
     // the user's installed models/runtimes during this entry-point smoke test.
-    env: { ...process.env, AETHER_PORT: "0", AETHER_DATA_DIR: join(root, "data"), PATH: "" },
+    env: { ...process.env, AETHER_HOST: "", AETHER_PORT: "0", AETHER_DATA_DIR: join(root, "data"), PATH: "" },
     stdio: ["ignore", "pipe", "pipe"]
   });
   const exited = once(child, "exit");
@@ -31,6 +31,7 @@ test("CLI starts and shuts down cleanly without an installed runtime", { timeout
     if (output.includes("Aether online:")) resolve();
   }));
   await Promise.race([ready, exited.then(() => { throw new Error(`CLI exited before readiness: ${errors}`); })]);
+  assert.match(output, /Aether online: http:\/\/127\.0\.0\.1:[1-9][0-9]*/);
   child.kill("SIGTERM");
   const [code, signal] = await exited;
   assert.equal(code, 0, errors);
